@@ -1,23 +1,37 @@
 const express = require('express');
-const cors = require('cors'); // Importa il pacchetto cors
+const multer = require('multer');
+const cors = require('cors');
 const { spawn } = require('child_process');
-const bodyParser = require('body-parser');
+const path = require('path');
 const app = express();
 const port = 3000;
 
-// Abilita CORS per tutte le richieste
+// Abilita CORS
 app.use(cors());
 
-// Middleware per gestire le richieste JSON
-app.use(bodyParser.json());
+// Configura multer per il caricamento dei file
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // Cartella dove salvare i file
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname); // Usa il nome originale del file
+  }
+});
 
-// Definisci una rotta di esempio
-app.post('/run-script', (req, res) => {
-  const inputData = req.body.data || '';
+const upload = multer({ storage: storage });
 
-  const python = spawn('python', ['script.py', inputData]);
+// Rotta per caricare il file ZIP
+app.post('/upload', upload.single('zipFile'), (req, res) => {
+  const filePath = path.join(__dirname, 'uploads', req.file.originalname);
+  
+  console.log('File caricato:', filePath);
 
+  // Esegui lo script Python e passagli il percorso del file ZIP
+  const python = spawn('py', ['script.py', filePath]); // 'py' per Windows, usa 'python3' per altri OS
+  
   let output = '';
+
   python.stdout.on('data', (data) => {
     output += data.toString();
   });
